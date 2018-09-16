@@ -1,0 +1,6 @@
+name: 'DataSync'
+main: 'com.avairebot.edge.CuttingEdgeSync'
+version: '1.0'
+author: 'Alexis Tan <Senither#0001>'
+description: 'A simple plugin that syncs pulls data from the main bot over to the cutting edge bot.'
+requires: '0.7.114'
