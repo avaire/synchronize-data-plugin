@@ -5,12 +5,15 @@ import com.avairebot.commands.Category;
 import com.avairebot.commands.CategoryHandler;
 import com.avairebot.commands.CommandMessage;
 import com.avairebot.contracts.commands.Command;
+import com.avairebot.database.controllers.GuildController;
+import com.avairebot.database.controllers.PlayerController;
 import com.avairebot.factories.MessageFactory;
 import com.avairebot.language.I18n;
 import com.avairebot.utilities.CacheUtil;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import net.dv8tion.jda.core.entities.Member;
 import net.dv8tion.jda.core.entities.Message;
 import org.jetbrains.annotations.NotNull;
 
@@ -23,7 +26,7 @@ import java.util.concurrent.TimeUnit;
 public class SyncDataCommand extends Command {
 
     private static final LoadingCache<Long, Boolean> cache = CacheBuilder.newBuilder()
-        .expireAfterWrite(2, TimeUnit.SECONDS)
+        .expireAfterWrite(2, TimeUnit.MINUTES)
         .build(new CacheLoader<Long, Boolean>() {
             @Override
             public Boolean load(@NotNull Long aLong) throws Exception {
@@ -114,9 +117,17 @@ public class SyncDataCommand extends Command {
             ));
 
             message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, true)).buildEmbed())
-                .queue();
+                .queue(this::handleClearCache);
         } catch (SQLException e) {
             e.printStackTrace();
+        }
+    }
+
+    private void handleClearCache(Message message) {
+        GuildController.forgetCache(message.getGuild().getIdLong());
+
+        for (Member user : message.getGuild().getMembers()) {
+            PlayerController.cache.invalidate(message.getGuild().getId() + ":" + user.getUser().getId());
         }
     }
 
