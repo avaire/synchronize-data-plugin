@@ -7,6 +7,7 @@ import com.avairebot.commands.CommandMessage;
 import com.avairebot.contracts.commands.Command;
 import com.avairebot.database.controllers.GuildController;
 import com.avairebot.database.controllers.PlayerController;
+import com.avairebot.database.controllers.PlaylistController;
 import com.avairebot.factories.MessageFactory;
 import com.avairebot.language.I18n;
 import com.avairebot.utilities.CacheUtil;
@@ -49,7 +50,7 @@ public class SyncDataCommand extends Command {
 
     @Override
     public String getDescription() {
-        return "Syncs the data from the main bot to the cutting edge bot, this will overwrite the existing server and XP data with the data from the main bot.";
+        return "Syncs the data from the main bot to the cutting edge bot, this will overwrite the existing server data, playlists, and XP data with the data from the main bot.";
     }
 
     @Override
@@ -82,7 +83,7 @@ public class SyncDataCommand extends Command {
             return false;
         }
 
-        context.makeInfo(buildMessage(false, false)).queue(this::handleGuildSync);
+        context.makeInfo(buildMessage(false, false, false)).queue(this::handleGuildSync);
 
         return true;
     }
@@ -98,7 +99,7 @@ public class SyncDataCommand extends Command {
                 message.getGuild().getIdLong()
             ));
 
-            message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, false)).buildEmbed())
+            message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, false, false)).buildEmbed())
                 .queue(this::handlePlayerXpSync);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -116,7 +117,25 @@ public class SyncDataCommand extends Command {
                 message.getGuild().getIdLong()
             ));
 
-            message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, true)).buildEmbed())
+            message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, true, false)).buildEmbed())
+                .queue(this::handlePlaylistSync);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void handlePlaylistSync(Message message) {
+        try {
+            plugin.getDatabase().newQueryBuilder(Constants.MUSIC_PLAYLIST_TABLE_NAME)
+                .where("guild_id", message.getGuild().getIdLong())
+                .delete();
+
+            plugin.getDatabase().queryInsert(String.format("INSERT INTO playlists SELECT * FROM %s.playlists WHERE `guild_id` = '%s'",
+                plugin.getConfig().getString("database.database"),
+                message.getGuild().getIdLong()
+            ));
+
+            message.editMessage(MessageFactory.makeInfo(message, buildMessage(true, true, true)).buildEmbed())
                 .queue(this::handleClearCache);
         } catch (SQLException e) {
             e.printStackTrace();
@@ -129,21 +148,24 @@ public class SyncDataCommand extends Command {
         for (Member user : message.getGuild().getMembers()) {
             PlayerController.cache.invalidate(message.getGuild().getId() + ":" + user.getUser().getId());
         }
+
+        PlaylistController.cache.invalidate(message.getGuild().getIdLong());
     }
 
     @SuppressWarnings("SameParameterValue")
-    private String buildMessage(boolean guildSync, boolean xpSync) {
-        String message = I18n.format("**Syncing guild data:** {0}\n**Syncing player experience data:** {1}",
+    private String buildMessage(boolean guildSync, boolean xpSync, boolean playlistSync) {
+        String message = I18n.format("**Syncing guild data:** {0}\n**Syncing player experience data:** {1}\n**Syncing server playlists:** {2}",
             guildSync ? ":ballot_box_with_check:" : "\uD83D\uDD18",
-            xpSync ? ":ballot_box_with_check:" : "\uD83D\uDD18"
+            xpSync ? ":ballot_box_with_check:" : "\uD83D\uDD18",
+            playlistSync ? ":ballot_box_with_check:" : "\uD83D\uDD18"
         );
 
-        message = (guildSync && xpSync
+        message = (guildSync && xpSync && playlistSync
             ? "~~Starting synchronized process...\n\n~~"
             : "Starting synchronized process...\n\n"
         ) + message;
 
-        if (guildSync && xpSync) {
+        if (guildSync && xpSync && playlistSync) {
             message += "\n\nDone! The synchronized process should now be finished!";
         }
 
