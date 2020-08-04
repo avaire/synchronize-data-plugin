@@ -1,7 +1,7 @@
 apply plugin: 'java'
 
 group 'com.avairebot'
-version '1.1'
+version '1.2'
 description 'Syncs data from the main bot to the cutting edge bot'
 
 sourceCompatibility = 1.8
