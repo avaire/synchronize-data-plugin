@@ -14,8 +14,8 @@ import com.avairebot.utilities.CacheUtil;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
-import net.dv8tion.jda.core.entities.Member;
-import net.dv8tion.jda.core.entities.Message;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import org.jetbrains.annotations.NotNull;
 
 import java.sql.SQLException;
@@ -30,7 +30,7 @@ public class SyncDataCommand extends Command {
         .expireAfterWrite(2, TimeUnit.MINUTES)
         .build(new CacheLoader<Long, Boolean>() {
             @Override
-            public Boolean load(@NotNull Long aLong) throws Exception {
+            public Boolean load(@NotNull Long aLong) {
                 return false;
             }
         });
